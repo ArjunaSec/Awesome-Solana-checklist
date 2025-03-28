@@ -5,7 +5,7 @@ A curated collection of resources and best practices for Solana program security
 ## Account Validations
 
 ### Signer Checks
-- [ ] Missing signer check
+- Missing signer check
 ```rust
 // ❌ Bad
 let account = ctx.accounts.account;
@@ -26,7 +26,7 @@ pub account: Account<AccountType>,
 Impact: Without signer validation, any account can be used in place of the intended signer, potentially allowing unauthorized access to program functions.
 
 ### Writer Checks
-- [ ] Missing writer check
+- Missing writer check
 ```rust
 // ❌ Bad
 let account = ctx.accounts.account;
@@ -48,7 +48,7 @@ pub account: Account<AccountType>,
 Impact: Attempting to modify a non-writable account will cause transaction failure. Always verify account mutability before attempting modifications.
 
 ### Owner Checks
-- [ ] Missing owner check
+- Missing owner check
 ```rust
 // ❌ Bad
 let account = ctx.accounts.account;
@@ -72,7 +72,7 @@ pub token_2022_program: Program<'info, Token2022>, // system owned accounts will
 Impact: Without owner validation, malicious accounts owned by other programs could be used, potentially leading to unauthorized state modifications or data theft.
 
 ### PDA Validation
-- [ ] Missing PDA validation
+- Missing PDA validation
 ```rust
 // ❌ Bad
 let pda = ctx.accounts.pda;
@@ -98,7 +98,7 @@ pub pda: Account<PdaAccount>,
 Impact: Invalid PDAs could be used to access or modify data meant for specific program-derived addresses, potentially compromising program security.
 
 ## Lamports Transfer Out of PDA
-- [ ] Missing rent exempt after transfer check
+- Missing rent exempt after transfer check
 ```rust
 // ❌ Bad
 let pda = ctx.accounts.pda;
@@ -118,7 +118,7 @@ pda.try_borrow_mut_lamports()? -= amount;
 ```
 Impact: The PDA will be garbage collected if it falls below the minimum rent-exempt balance, potentially causing data loss and program state inconsistencies.
 
-- [ ] Using signer seeds instead of try borrow lamports
+- Using signer seeds instead of try borrow lamports
 ```rust
 // ❌ Bad
 let pda = ctx.accounts.pda;
@@ -147,7 +147,7 @@ Reference : https://solanacookbook.com/references/programs.html#how-to-transfer-
 
 ### CPI Issues 
 
-- [ ] Right order of CPI accounts not validated 
+- Right order of CPI accounts not validated 
 ```rust
 // ❌ Vulnerable: Incorrect account ordering in CPI call.
 // The accounts are passed in an order that does not match the expected order of the callee.
@@ -181,7 +181,7 @@ other_program::cpi::some_instruction(
 ```
 Impact: Incorrect account ordering in CPI calls can lead to unexpected behavior, mainly tx failures.
 
-- [ ] Missing bump value in signer seeds
+- Missing bump value in signer seeds
 ```rust
 // ❌ Bad - Missing bump value in signer seeds
 let seeds = &[b"prefix", other_seed];
@@ -219,7 +219,7 @@ system_program::transfer(
 ```
 Impact: Without including the bump value in signer seeds, the PDA signature verification will fail, causing the transaction to revert.
 
-- [ ] Incorrect or missing seeds in signer seeds
+- Incorrect or missing seeds in signer seeds
 ```rust
 // ❌ Bad - Missing required seed
 let seeds = &[b"prefix"]; // Missing other_seed
@@ -239,7 +239,7 @@ let signer = &[&seeds[..], &[bump]];
 ```
 Impact: Incorrect or missing seeds in signer seeds will cause PDA signature verification to fail, potentially causing  transaction failures.
 
-- [ ] Arbitrary CPI
+- Arbitrary CPI
 ```rust
 // ❌ Bad
 let arbitrary_program = ctx.accounts.arbitrary_program;
@@ -278,7 +278,7 @@ Impact: Allowing arbitrary CPI calls can enable malicious programs to execute un
 
 ### Unvalidated account 
 
-- [ ] Missing check for rent account to be the same
+- Missing check for rent account to be the same
 ```rust
 // ❌ Bad
 let rent = ctx.accounts.rent;
@@ -298,7 +298,7 @@ pub rent: Sysvar<'info, Rent>,
 Impact: Using an incorrect rent account could lead to incorrect rent calculations and potential security vulnerabilities.
 
 ### Token Program Check
-- [ ] Missing check for token program
+- Missing check for token program
 ```rust
 // ❌ Bad
 let token_program = ctx.accounts.token_program;
@@ -318,7 +318,7 @@ pub token_program: Program<'info, Token>,
 Impact: Without validating the token program, malicious token programs could be used to manipulate token operations.
 
 ### Sysvar Account Check
-- [ ] Missing check for Sysvar account
+- Missing check for Sysvar account
 
 These are th
 ```markdown
@@ -351,7 +351,7 @@ pub sysvar: Sysvar<'info, Rent>,
 Impact: Incorrect sysvar accounts could lead to incorrect program behavior and potential security issues.
 
 ### Token Account Ownership Check
-- [ ] Missing check for Token Account Ownership
+- Missing check for Token Account Ownership
 ```rust
 // ❌ Bad
 let token_account = ctx.accounts.token_account;
