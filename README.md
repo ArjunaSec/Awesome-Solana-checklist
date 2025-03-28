@@ -2,6 +2,46 @@
 
 A curated collection of resources and best practices for Solana program security by [Arjuna](x.com/arjuna_sec). 
 
+For audits reach out at : [here](https://t.me/calc1f4r)
+
+## Table of Contents
+- [Account Validations](#account-validations)
+  - [Signer Checks](#signer-checks)
+  - [Writer Checks](#writer-checks)
+  - [Owner Checks](#owner-checks)
+  - [PDA Validation](#pda-validation)
+- [Account Data Reallocation](#account-data-reallocation)
+- [Lamports Transfer Out of PDA](#lamports-transfer-out-of-pda)
+- [CPI Issues](#cpi-issues)
+- [Unvalidated account](#unvalidated-account)
+  - [Token Program Check](#token-program-check)
+  - [Sysvar Account Check](#sysvar-account-check)
+  - [Token Account Ownership Check](#token-account-ownership-check)
+  - [Remaining Accounts](#remaining-accounts)
+- [Account Reloading](#account-reloading)
+- [DOS vectors](#dos-vectors)
+  - [Associated Token Account Initialization](#associated-token-account-initialization)
+  - [Account Pre-creation Attack](#account-pre-creation-attack)
+- [Mint Issues](#mint-issues)
+  - [Missing check for mint close authority extension](#missing-check-for-mint-close-authority-extension)
+  - [Missing check for mint freeze authority](#missing-check-for-mint-freeze-authority)
+  - [Fee on transfer extension not properly handled](#fee-on-transfer-extension-not-properly-handled)
+- [Event emission issues](#event-emission-issues)
+  - [Wrong event emission](#wrong-event-emission)
+  - [Missing event emission on critical state updates](#missing-event-emission-on-critical-state-updates)
+- [Arithmetic and Data Handling Security](#arithmetic-and-data-handling-security)
+  - [Integer Overflow/Underflow Protection](#integer-overflowunderflow-protection)
+  - [Division Safety](#division-safety)
+  - [Precision Loss Prevention](#precision-loss-prevention)
+  - [Safe Type Casting](#safe-type-casting)
+  - [Rounding Considerations](#rounding-considerations)
+  - [Error Handling](#error-handling)
+  - [Decimal Handling](#decimal-handling)
+- [Resources](#resources)
+  - [Official Documentation](#official-documentation)
+  - [Security Best Practices](#security-best-practices)
+
+
 ## Account Validations
 
 ### Signer Checks
@@ -97,6 +137,47 @@ pub pda: Account<PdaAccount>,
 ```
 Impact: Invalid PDAs could be used to access or modify data meant for specific program-derived addresses, potentially compromising program security.
 
+## Account Data Reallocation
+- Unsafe reallocation without proper memory management
+```rust
+// ❌ Bad
+// Directly reallocating without proper memory handling
+account.realloc(new_size, false)?;
+
+// ❌ Bad
+// Reallocating without zero-initialization
+let current_data_size = account.data.borrow().len();
+if current_data_size < new_size {
+    account.realloc(new_size, false)?;
+}
+
+// ✅ Good
+// Safely reallocating with proper memory management
+let current_data_size = account.data.borrow().len();
+account.realloc(new_size, false)?;
+if current_data_size < new_size {
+    // Zero-initialize the new memory region
+    let data = &mut account.data.borrow_mut();
+    for i in current_data_size..new_size {
+        data[i] = 0;
+    }
+}
+```
+Impact: Improper memory management during reallocation can lead to memory corruption, uninitialized memory access, or exploitation of sensitive data left in uninitialized memory regions. This can result in security vulnerabilities including potential account takeovers or data leakage.
+
+- Not handling memory allocation failures
+```rust
+// ❌ Bad
+// No error handling for reallocation failures
+account.realloc(new_size, false);
+
+// ✅ Good
+// Proper error handling for reallocation
+account.realloc(new_size, false)
+    .map_err(|_| ProgramError::AccountDataTooSmall)?;
+```
+Impact: Failing to handle memory allocation errors can lead to unexpected program behavior, potential vulnerabilities, and denial of service attacks.
+
 ## Lamports Transfer Out of PDA
 - Missing rent exempt after transfer check
 ```rust
@@ -145,7 +226,7 @@ Impact: Using signer seeds for transfers from a pda won't succeed, as only syste
 
 Reference : https://solanacookbook.com/references/programs.html#how-to-transfer-sol-in-a-program
 
-### CPI Issues 
+## CPI Issues 
 
 - Right order of CPI accounts not validated 
 ```rust
@@ -276,7 +357,7 @@ pub known_program: Program<'info, KnownProgram>,
 ```
 Impact: Allowing arbitrary CPI calls can enable malicious programs to execute unauthorized operations or manipulate program state through untrusted external calls.
 
-### Unvalidated account 
+## Unvalidated account
 
 - Missing check for rent account to be the same
 ```rust
@@ -320,12 +401,12 @@ Impact: Without validating the token program, malicious token programs could be 
 ### Sysvar Account Check
 - Missing check for Sysvar account
 
-These are th
+These are the actual system program accounts 
 ```markdown
 Clock: SysvarC1ock11111111111111111111111111111111
 EpochSchedule: SysvarEpochSchedu1e111111111111111111111111
 Fees: SysvarFees111111111111111111111111111111111
-Instructions: Sysvar1nstructions1111111111111111111111111
+Instructions: Sysvar1nstructions111111111111111111111111111
 RecentBlockhashes: SysvarRecentB1ockHashes11111111111111111111
 Rent: SysvarRent111111111111111111111111111111111
 SlotHashes: SysvarS1otHashes111111111111111111111111111
@@ -373,6 +454,380 @@ pub token_account: Account<TokenAccount>,
 pub token_account: Account<'info, TokenAccount>,
 ```
 Impact: Without validating token account ownership, tokens could be stolen or manipulated by unauthorized users.
+
+### Remaining Accounts
+- Missing validation on accounts in the `remaining_accounts` field
+```rust
+// ❌ Bad: No validation of remaining_accounts
+fn process_instruction(ctx: Context<Instruction>) -> Result<()> {
+    // Accessing accounts from remaining_accounts without validation
+    let accounts = ctx.remaining_accounts;
+    for account in accounts {
+        // Operating on the account without validation
+        // ...
+    }
+    Ok(())
+}
+
+// ✅ Good: Validate each account in remaining_accounts
+fn process_instruction(ctx: Context<Instruction>) -> Result<()> {
+    let accounts = ctx.remaining_accounts;
+    for account in accounts {
+        // Validate account owner
+        require!(
+            account.owner == &TOKEN_PROGRAM_ID || 
+            account.owner == &program_id(),
+            ErrorCode::InvalidAccountOwner
+        );
+        
+        // Additional validation based on expected account types
+        // ...
+    }
+    Ok(())
+}
+```
+Impact: Without validating accounts passed through `remaining_accounts`, attackers can pass in malicious or unexpected accounts, potentially leading to unauthorized access, fund theft, or manipulation of program state. validate them according to your needs 
+
+## Account Reloading
+- Not refreshing accounts after modifications through CPI calls
+```rust
+// ❌ Bad: Account state not refreshed after CPI
+fn process_token_transfer(ctx: Context<TransferTokens>) -> Result<()> {
+    // Perform a CPI that modifies the 'source_token' account
+    token::transfer(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            token::Transfer {
+                from: ctx.accounts.source_token.to_account_info(),
+                to: ctx.accounts.destination_token.to_account_info(),
+                authority: ctx.accounts.authority.to_account_info(),
+            },
+        ),
+        amount,
+    )?;
+    
+    // Incorrect: Using the same account state that was loaded at transaction start
+    // The account.amount no longer reflects the actual on-chain state
+    let remaining_balance = ctx.accounts.source_token.amount;
+    
+    // ... logic dependent on remaining_balance ...
+}
+
+// ✅ Good: Refresh account state after CPI
+fn process_token_transfer(ctx: Context<TransferTokens>) -> Result<()> {
+    // Perform a CPI that modifies the 'source_token' account
+    token::transfer(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            token::Transfer {
+                from: ctx.accounts.source_token.to_account_info(),
+                to: ctx.accounts.destination_token.to_account_info(),
+                authority: ctx.accounts.authority.to_account_info(),
+            },
+        ),
+        amount,
+    )?;
+    
+    // Correct: Reload account data from storage
+    ctx.accounts.source_token.reload()?;
+    
+    // Now we have the current on-chain state
+    let remaining_balance = ctx.accounts.source_token.amount;
+    
+    // ... logic dependent on remaining_balance ...
+}
+```
+Impact: Solana loads accounts only once at the beginning of a transaction. When an account's state changes through a CPI call, the program's view of that account becomes outdated. Using outdated account state can lead to incorrect calculations, logic errors, and potential security vulnerabilities.
+
+## DOS vectors 
+
+### Associated Token Account Initialization
+- Using `init` instead of `init_if_needed` for ATA creation
+```rust
+// ❌ Bad - Using init for ATA creation
+#[account(
+    init,
+    payer = user,
+    associated_token::mint = mint,
+    associated_token::authority = user,
+)]
+pub token_account: Account<'info, TokenAccount>,
+
+// ✅ Good - Using init_if_needed for ATA creation
+#[account(
+    init_if_needed,
+    payer = user,
+    associated_token::mint = mint,
+    associated_token::authority = user,
+)]
+pub token_account: Account<'info, TokenAccount>,
+```
+Impact: Using `init` instead of `init_if_needed` for ATA creation will cause transactions to fail if the token account already exists, enabling attackers to front-run legitimate transactions by creating accounts first, resulting in denial of service.
+
+### Account Pre-creation Attack
+- Not handling cases where accounts could be pre-created by attackers
+```rust
+// ❌ Bad - Vulnerable to pre-creation attacks
+#[account(
+    init,
+    payer = user,
+    space = 8 + size,
+    seeds = [b"account", user.key().as_ref()],
+    bump
+)]
+pub data_account: Account<'info, DataAccount>,
+
+// ✅ Good - Using init_if_needed to handle pre-created accounts
+#[account(
+    init_if_needed,
+    payer = user,
+    space = 8 + size,
+    seeds = [b"account", user.key().as_ref()],
+    bump
+)]
+pub data_account: Account<'info, DataAccount>,
+
+// ✅ Good - Additional validation for pre-existing accounts
+#[account(
+    init_if_needed,
+    payer = user,
+    space = 8 + size,
+    seeds = [b"account", user.key().as_ref()],
+    bump,
+    constraint = data_account.owner == program_id @ ErrorCode::InvalidOwner
+)]
+pub data_account: Account<'info, DataAccount>,
+```
+Impact: When a program expects to create an account but doesn't handle pre-existing accounts, attackers can front-run transactions and create the targeted accounts first, causing legitimate transactions to fail and creating denial of service conditions.
+
+Reference : https://code4rena.com/reports/2025-01-pump-science#h-01-the-lock_pool-operation-can-be-dos
+
+### Mint Issues
+
+- Missing check for mint close authority extension
+```rust
+// ❌ Bad: No validation of close authority
+let mint = ctx.accounts.mint;
+
+// ✅ Good: Validate close authority is not set or expected
+let mint = ctx.accounts.mint;
+let close_authority = spl_token_2022::extension::close_authority::get_close_authority(&mint.to_account_info())?;
+require!(close_authority.is_none(), ErrorCode::UnexpectedCloseAuthority);
+```
+Impact: If close authority is set, the mint could be closed by the authority, potentially rendering tokens worthless.
+
+- Missing check for mint freeze authority
+```rust
+// ❌ Bad: No validation of freeze authority
+let mint = ctx.accounts.mint;
+
+// ✅ Good: Validate freeze authority is not set or expected
+let mint = ctx.accounts.mint;
+require!(mint.freeze_authority.is_none(), ErrorCode::UnexpectedFreezeAuthority);
+```
+Impact: If freeze authority is set, user token accounts could be frozen, preventing users from transferring their tokens, raydium does not allow mint with freeze authority 
+
+
+- Fee on transfer extension not properly handled
+```rust
+// ❌ Bad: Using basic transfer with fee-enabled token
+token::transfer(
+    ctx.accounts.token_program.to_account_info(),
+    ctx.accounts.from.to_account_info(),
+    ctx.accounts.to.to_account_info(),
+    ctx.accounts.authority.to_account_info(),
+    &[],
+    amount,
+)?;
+
+// ✅ Good: Using transfer_checked for fee-enabled tokens
+token::transfer_checked(
+    ctx.accounts.token_program.to_account_info(),
+    ctx.accounts.from.to_account_info(),
+    ctx.accounts.mint.to_account_info(),
+    ctx.accounts.to.to_account_info(),
+    ctx.accounts.authority.to_account_info(),
+    &[],
+    amount,
+    mint.decimals,
+)?;
+```
+Impact: Using `transfer` instead of `transfer_checked` with fee-enabled tokens can lead to unexpected token amounts being received, potentially causing accounting errors. 
+
+Reference : https://spl.solana.com/token-2022/extensions#transfer-fees
+
+
+## Event emission issues
+
+### Wrong event emission
+- Emitting incorrect or misleading event data
+```rust
+// ❌ Bad: Emitting incorrect event data
+fn transfer_tokens(ctx: Context<Transfer>, amount: u64) -> Result<()> {
+    // Perform transfer logic...
+    
+    // Incorrect: Emitting wrong amount in event
+    msg!("Transfer completed: amount={}", amount + fee);  // Wrong: includes fee in reported amount
+    emit!(TransferEvent {
+        from: ctx.accounts.sender.key(),
+        to: ctx.accounts.receiver.key(),
+        amount: amount + fee,  // Wrong: includes fee in reported amount
+    });
+    
+    Ok(())
+}
+
+// ✅ Good: Emitting accurate event data
+fn transfer_tokens(ctx: Context<Transfer>, amount: u64) -> Result<()> {
+    // Perform transfer logic...
+    
+    // Correct: Emitting accurate information
+    msg!("Transfer completed: amount={}, fee={}", amount, fee);
+    emit!(TransferEvent {
+        from: ctx.accounts.sender.key(),
+        to: ctx.accounts.receiver.key(),
+        amount: amount,
+        fee: fee,
+    });
+    
+    Ok(())
+}
+```
+Impact: Incorrect event data can mislead users and off-chain systems, causing accounting errors and confusion. This may also affect indexers and dashboards that rely on event data.
+
+### Missing event emission on critical state updates
+- Failing to emit events for important state changes
+```rust
+// ❌ Bad: Missing event for critical state change
+fn update_admin(ctx: Context<UpdateAdmin>) -> Result<()> {
+    let program_state = &mut ctx.accounts.program_state;
+    
+    // Critical state change without event
+    program_state.admin = ctx.accounts.new_admin.key();
+    
+    Ok(())
+}
+
+// ✅ Good: Including events for all critical state changes
+fn update_admin(ctx: Context<UpdateAdmin>) -> Result<()> {
+    let program_state = &mut ctx.accounts.program_state;
+    
+    // Store old admin for event
+    let old_admin = program_state.admin;
+    
+    // Update state
+    program_state.admin = ctx.accounts.new_admin.key();
+    
+    // Emit event for the critical change
+    msg!("Admin changed from {} to {}", 
+        old_admin, ctx.accounts.new_admin.key());
+    emit!(AdminChangedEvent {
+        old_admin: old_admin,
+        new_admin: ctx.accounts.new_admin.key(),
+        timestamp: Clock::get()?.unix_timestamp,
+    });
+    
+    Ok(())
+}
+```
+Impact: Missing events for critical state changes makes it difficult to track important program updates, audit program activity, and notify users of significant changes. This reduces transparency and can hamper off-chain monitoring systems from detecting potentially malicious activities.
+
+## Arithmetic and Data Handling Security
+
+### Integer Overflow/Underflow Protection
+- Missing checks for arithmetic operations
+```rust
+// ❌ Bad: Unchecked arithmetic
+let balance = account.balance + amount;
+
+// ✅ Good: Checked arithmetic
+let balance = account.balance.checked_add(amount)
+    .ok_or(ProgramError::Overflow)?;
+```
+Impact: Unchecked arithmetic operations can lead to integer overflow or underflow, resulting in incorrect calculations and potential loss of funds.
+
+### Division Safety
+- Missing checks for zero divisors
+```rust
+// ❌ Bad: Unchecked division
+let result = total / divisor;
+
+// ✅ Good: Check for zero before division
+if divisor == 0 {
+    return Err(ProgramError::InvalidArgument);
+}
+let result = total / divisor;
+```
+Impact: Division by zero can cause program crashes and transaction failures.
+
+### Precision Loss Prevention
+- Missing consideration for precision in calculations
+```rust
+// ❌ Bad: Potential precision loss
+let rate = (amount * 100) / total;
+
+// ✅ Good: Maintain precision
+let rate = amount.checked_mul(100)
+    .ok_or(ProgramError::Overflow)?
+    .checked_div(total)
+    .ok_or(ProgramError::Overflow)?;
+```
+Impact: Loss of precision in financial calculations can lead to incorrect values and potential fund discrepancies.
+
+### Safe Type Casting
+- Unchecked type conversions
+```rust
+// ❌ Bad: Unsafe casting
+let small_num = big_num as u64;
+
+// ✅ Good: Safe casting with checks
+let small_num = u64::try_from(big_num)
+    .map_err(|_| ProgramError::InvalidArgument)?;
+```
+Impact: Unchecked type conversions can lead to data corruption or unexpected behavior.
+
+### Rounding Considerations
+- Implicit rounding behavior
+```rust
+// ❌ Bad: Implicit rounding
+let shares = total_shares * amount / total_supply;
+
+// ✅ Good: Explicit rounding with checks
+let shares = total_shares
+    .checked_mul(amount)?
+    .checked_add(total_supply.checked_sub(1)?)?
+    .checked_div(total_supply)?;  // Ceiling division
+```
+Impact: Incorrect rounding behavior can affect calculations, especially in financial operations.
+
+### Error Handling
+- Missing error handling for arithmetic operations
+```rust
+// ❌ Bad: No error handling
+fn calculate_amount(base: u64, multiplier: u64) -> u64 {
+    base * multiplier
+}
+
+// ✅ Good: Proper error handling
+fn calculate_amount(base: u64, multiplier: u64) -> Result<u64, ProgramError> {
+    base.checked_mul(multiplier)
+        .ok_or(ProgramError::Overflow)
+}
+```
+Impact: Insufficient handling of arithmetic errors can lead to unhandled exceptions and potential vulnerabilities.
+
+### Decimal Handling
+- Improper handling of decimal calculations
+```rust
+// ❌ Bad: Direct decimal operations
+let price = raw_price / 100;  // For 2 decimal places
+
+// ✅ Good: Using decimal handling library
+use anchor_decimal::Decimal;
+
+let price = Decimal::from_price(raw_price, 2)?;
+```
+Impact: Improper handling of decimal calculations can lead to rounding errors and incorrect financial calculations.
 
 ## Resources
 
