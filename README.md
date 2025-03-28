@@ -359,11 +359,6 @@ require!(
 );
 
 // ✅ Good - Anchor
-#[account(
-    constraint = sysvar.key() == sysvar::rent::ID || 
-                 sysvar.key() == sysvar::clock::ID ||
-                 sysvar.key() == sysvar::slot_hashes::ID @ ErrorCode::InvalidSysvarAccount
-)]
 pub sysvar: Sysvar<'info, Rent>,
 ```
 Impact: Incorrect sysvar accounts could lead to incorrect program behavior and potential security issues.
@@ -385,6 +380,10 @@ require!(
     constraint = token_account.owner == expected_owner @ ErrorCode::InvalidTokenAccountOwner
 )]
 pub token_account: Account<TokenAccount>,
+
+// ✅ good - Anchor 
+#[account(token::authority = authority)]
+pub token_account: Account<'info, TokenAccount>,
 ```
 Impact: Without validating token account ownership, tokens could be stolen or manipulated by unauthorized users.
 
