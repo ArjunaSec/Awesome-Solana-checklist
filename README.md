@@ -43,17 +43,13 @@ For audits reach out at : [here](https://t.me/calc1f4r)
   - [The Vulnerability](#the-vulnerability)
   - [Example Scenario](#example-scenario)
   - [Recommended Mitigation](#recommended-mitigation)
-- [Contributing](#contributing)
-  - [How to Contribute](#how-to-contribute)
-  - [Types of Contributions](#types-of-contributions)
-  - [Contribution Guidelines](#contribution-guidelines)
 - [Resources](#resources)
   - [Official Documentation](#official-documentation)
   - [Security Best Practices](#security-best-practices)
 
 ## Contributing
 
-Contributions to the Solana Security Checklist are welcome and encouraged! If you've discovered security best practices, vulnerabilities, or code patterns that could help improve security for Solana programs, consider contributing to this repository.
+Contributions to the Solana Security Checklist are welcome and encouraged! If you've discovered security best practices, vulnerabilities, or code patterns that could help improve security for Solana programs, please consider contributing to this repository.
 
 ### How to Contribute
 
@@ -77,6 +73,13 @@ Contributions to the Solana Security Checklist are welcome and encouraged! If yo
 - Add references to external resources when applicable
 
 For major changes or additions, please open an issue first to discuss what you would like to change.
+
+### Getting Help
+
+If you have questions about contributing or need assistance, feel free to:
+- Open an issue with your question
+- Reach out on Twitter at [@arjuna_sec](https://x.com/arjuna_sec)
+- Join our community discussions
 
 ## Account Validations
 
@@ -1073,33 +1076,6 @@ To mitigate seed collision vulnerabilities:
 5. Test your program with various seed inputs to verify no collisions occur in expected usage patterns
 
 Impact: Seed collisions can lead to account confusion, where a PDA created for one purpose is mistakenly used for another. This can result in security vulnerabilities including denial of service, account takeovers, or data corruption.
-
-## Contributing
-
-Contributions to the Solana Security Checklist are welcome and encouraged! If you've discovered security best practices, vulnerabilities, or code patterns that could help improve security for Solana programs, consider contributing to this repository.
-
-### How to Contribute
-
-1. **Fork the Repository**: Create your own fork of this repo
-2. **Create a Branch**: Make your changes in a new branch
-3. **Submit a Pull Request**: Once your changes are ready, submit a pull request for review
-
-### Types of Contributions
-
-- **New Security Patterns**: Add examples of security vulnerabilities and their mitigations
-- **Improved Examples**: Enhance existing examples with better code patterns or clearer explanations
-- **Documentation**: Fix typos, improve explanations, or add additional context
-- **References**: Add links to articles, blogs, or reports about Solana security
-- **Code Samples**: Provide real-world examples of security issues and fixes
-
-### Contribution Guidelines
-
-- Provide both vulnerable (❌) and secure (✅) code examples when possible
-- Include clear explanations of the impact of each vulnerability
-- Follow the existing pattern of categorizing vulnerabilities by type
-- Add references to external resources when applicable
-
-For major changes or additions, please open an issue first to discuss what you would like to change.
 
 ## Resources
 
