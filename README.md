@@ -46,40 +46,11 @@ For audits reach out at : [here](https://t.me/calc1f4r)
 - [Resources](#resources)
   - [Official Documentation](#official-documentation)
   - [Security Best Practices](#security-best-practices)
-
-## Contributing
-
-Contributions to the Solana Security Checklist are welcome and encouraged! If you've discovered security best practices, vulnerabilities, or code patterns that could help improve security for Solana programs, please consider contributing to this repository.
-
-### How to Contribute
-
-1. **Fork the Repository**: Create your own fork of this repo
-2. **Create a Branch**: Make your changes in a new branch
-3. **Submit a Pull Request**: Once your changes are ready, submit a pull request for review
-
-### Types of Contributions
-
-- **New Security Patterns**: Add examples of security vulnerabilities and their mitigations
-- **Improved Examples**: Enhance existing examples with better code patterns or clearer explanations
-- **Documentation**: Fix typos, improve explanations, or add additional context
-- **References**: Add links to articles, blogs, or reports about Solana security
-- **Code Samples**: Provide real-world examples of security issues and fixes
-
-### Contribution Guidelines
-
-- Provide both vulnerable (❌) and secure (✅) code examples when possible
-- Include clear explanations of the impact of each vulnerability
-- Follow the existing pattern of categorizing vulnerabilities by type
-- Add references to external resources when applicable
-
-For major changes or additions, please open an issue first to discuss what you would like to change.
-
-### Getting Help
-
-If you have questions about contributing or need assistance, feel free to:
-- Open an issue with your question
-- Reach out on Twitter at [@arjuna_sec](https://x.com/arjuna_sec)
-- Join our community discussions
+- [Contributing](#contributing)
+  - [How to Contribute](#how-to-contribute)
+  - [Types of Contributions](#types-of-contributions)
+  - [Contribution Guidelines](#contribution-guidelines)
+  - [Getting Help](#getting-help)
 
 ## Account Validations
 
@@ -1089,3 +1060,37 @@ Impact: Seed collisions can lead to account confusion, where a PDA created for o
 - [Token-2022 Security Best Practices Part 2](https://blog.offside.io/p/token-2022-security-best-practices-part-2)
 - [Solana Program Security Research](https://research.kudelskisecurity.com/2021/09/15/solana-program-security-part1/)
 - [Solana Smart Contract Security Best Practices](https://github.com/slowmist/solana-smart-contract-security-best-practices)
+
+## Contributing
+
+Contributions to the Solana Security Checklist are welcome and encouraged! If you've discovered security best practices, vulnerabilities, or code patterns that could help improve security for Solana programs, please consider contributing to this repository.
+
+### How to Contribute
+
+1. **Fork the Repository**: Create your own fork of this repo
+2. **Create a Branch**: Make your changes in a new branch
+3. **Submit a Pull Request**: Once your changes are ready, submit a pull request for review
+
+### Types of Contributions
+
+- **New Security Patterns**: Add examples of security vulnerabilities and their mitigations
+- **Improved Examples**: Enhance existing examples with better code patterns or clearer explanations
+- **Documentation**: Fix typos, improve explanations, or add additional context
+- **References**: Add links to articles, blogs, or reports about Solana security
+- **Code Samples**: Provide real-world examples of security issues and fixes
+
+### Contribution Guidelines
+
+- Provide both vulnerable (❌) and secure (✅) code examples when possible
+- Include clear explanations of the impact of each vulnerability
+- Follow the existing pattern of categorizing vulnerabilities by type
+- Add references to external resources when applicable
+
+For major changes or additions, please open an issue first to discuss what you would like to change.
+
+### Getting Help
+
+If you have questions about contributing or need assistance, feel free to:
+- Open an issue with your question
+- Reach out on Twitter at [@arjuna_sec](https://x.com/arjuna_sec)
+- Join our community discussions
