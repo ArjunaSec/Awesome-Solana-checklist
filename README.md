@@ -104,7 +104,7 @@ Impact: Invalid PDAs could be used to access or modify data meant for specific p
 let pda = ctx.accounts.pda;
 pda.try_borrow_mut_lamports()? -= amount;
 
-// ✅ Good - Native
+// ✅ Good -
 let pda = ctx.accounts.pda;
 let rent = Rent::get()?;
 let min_rent = rent.minimum_balance(pda.data_len());
@@ -115,15 +115,6 @@ require!(
 );
 pda.try_borrow_mut_lamports()? -= amount;
 
-// ✅ Good - Anchor
-#[account(
-    constraint = {
-        let rent = Rent::get()?;
-        let min_rent = rent.minimum_balance(pda.data_len());
-        pda.lamports() - amount >= min_rent
-    } @ ErrorCode::InsufficientFundsForRent
-)]
-pub pda: Account<'info, PdaAccount>,
 ```
 Impact: The PDA will be garbage collected if it falls below the minimum rent-exempt balance, potentially causing data loss and program state inconsistencies.
 
@@ -149,25 +140,24 @@ system_program::transfer(
 let pda = ctx.accounts.pda;
 pda.try_borrow_mut_lamports()? -= amount;
 recipient.try_borrow_mut_lamports()? += amount;
-
-// ✅ Good - Anchor
-#[account(mut)]
-pub pda: Account<'info, PdaAccount>,
-#[account(mut)]
-pub recipient: Account<'info, SystemAccount>,
 ```
-Impact: Using signer seeds for transfers can lead to transaction failures and potential race conditions. Direct lamport manipulation is more efficient and safer.
+Impact: Using signer seeds for transfers from a pda won't succeed, as only system program can only deduct balances.
+
+Reference : https://solanacookbook.com/references/programs.html#how-to-transfer-sol-in-a-program
 
 ### CPI Issues 
 
 - [ ] Right order of CPI accounts not validated 
 ```rust
-// ❌ Bad - Arbitrary account ordering can lead to security vulnerabilities
+// ❌ Vulnerable: Incorrect account ordering in CPI call.
+// The accounts are passed in an order that does not match the expected order of the callee.
 let accounts = vec![
-    ctx.accounts.account1.to_account_info(),
+    // WRONG: 'account2' is placed first instead of 'account1'
     ctx.accounts.account2.to_account_info(),
+    ctx.accounts.account1.to_account_info(),
 ];
 let cpi_accounts = accounts.as_slice();
+
 other_program::cpi::some_instruction(
     CpiContext::new(
         ctx.accounts.other_program.to_account_info(),
@@ -175,7 +165,8 @@ other_program::cpi::some_instruction(
     ),
 )?;
 
-// ✅ Good - Native
+// 🟢 Correct way
+
 other_program::cpi::some_instruction(
     CpiContext::new(
         ctx.accounts.other_program.to_account_info(),
@@ -186,15 +177,9 @@ other_program::cpi::some_instruction(
     ),
 )?;
 
-// ✅ Good - Anchor
-#[account]
-pub account1: Account<'info, AccountType>,
-#[account]
-pub account2: Account<'info, AccountType>,
-#[account]
-pub other_program: Program<'info, OtherProgram>,
+
 ```
-Impact: Incorrect account ordering in CPI calls can lead to unexpected behavior, unauthorized access, or program state corruption.
+Impact: Incorrect account ordering in CPI calls can lead to unexpected behavior, mainly tx failures.
 
 - [ ] Missing bump value in signer seeds
 ```rust
@@ -252,7 +237,7 @@ let (pda, bump) = Pubkey::find_program_address(
 let seeds = &[b"prefix", other_seed];
 let signer = &[&seeds[..], &[bump]];
 ```
-Impact: Incorrect or missing seeds in signer seeds will cause PDA signature verification to fail, potentially allowing unauthorized access or causing transaction failures.
+Impact: Incorrect or missing seeds in signer seeds will cause PDA signature verification to fail, potentially causing  transaction failures.
 
 - [ ] Arbitrary CPI
 ```rust
@@ -334,6 +319,8 @@ Impact: Without validating the token program, malicious token programs could be 
 
 ### Sysvar Account Check
 - [ ] Missing check for Sysvar account
+
+These are th
 ```markdown
 Clock: SysvarC1ock11111111111111111111111111111111
 EpochSchedule: SysvarEpochSchedu1e111111111111111111111111
@@ -390,12 +377,12 @@ Impact: Without validating token account ownership, tokens could be stolen or ma
 ## Resources
 
 ### Official Documentation
-- [ ] [Solana Program Security Course](https://solana.com/developers/courses/program-security)
+- [Solana Program Security Course](https://solana.com/developers/courses/program-security)
 
 ### Security Best Practices
-- [ ] [Token-2022 Security Best Practices](https://blog.offside.io/p/token-2022-security-best-practices-part-1)
-- [ ] [Common Vulnerabilities in Anchor Programs](https://www.zellic.io/blog/the-vulnerabilities-youll-write-with-anchor/)
-- [ ] [A Hitchhiker's Guide to Solana Program Security](https://www.helius.dev/blog/a-hitchhikers-guide-to-solana-program-security)
-- [ ] [Token-2022 Security Best Practices Part 2](https://blog.offside.io/p/token-2022-security-best-practices-part-2)
-- [ ] [Solana Program Security Research](https://research.kudelskisecurity.com/2021/09/15/solana-program-security-part1/)
-- [ ] [Solana Smart Contract Security Best Practices](https://github.com/slowmist/solana-smart-contract-security-best-practices)
+- [Token-2022 Security Best Practices](https://blog.offside.io/p/token-2022-security-best-practices-part-1)
+- [Common Vulnerabilities in Anchor Programs](https://www.zellic.io/blog/the-vulnerabilities-youll-write-with-anchor/)
+- [A Hitchhiker's Guide to Solana Program Security](https://www.helius.dev/blog/a-hitchhikers-guide-to-solana-program-security)
+- [Token-2022 Security Best Practices Part 2](https://blog.offside.io/p/token-2022-security-best-practices-part-2)
+- [Solana Program Security Research](https://research.kudelskisecurity.com/2021/09/15/solana-program-security-part1/)
+- [Solana Smart Contract Security Best Practices](https://github.com/slowmist/solana-smart-contract-security-best-practices)
