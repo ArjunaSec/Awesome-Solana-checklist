@@ -17,6 +17,7 @@ For audits reach out at : [here](https://t.me/calc1f4r)
   - [Token Program Check](#token-program-check)
   - [Sysvar Account Check](#sysvar-account-check)
   - [Token Account Ownership Check](#token-account-ownership-check)
+  - [Token Account Existence Check](#token-account-existence-check)
   - [Remaining Accounts](#remaining-accounts)
 - [Account Reloading](#account-reloading)
 - [DOS vectors](#dos-vectors)
@@ -40,6 +41,10 @@ For audits reach out at : [here](https://t.me/calc1f4r)
 - [Resources](#resources)
   - [Official Documentation](#official-documentation)
   - [Security Best Practices](#security-best-practices)
+- [Seed Collisions](#seed-collisions)
+  - [The Vulnerability](#the-vulnerability)
+  - [Example Scenario](#example-scenario)
+  - [Recommended Mitigation](#recommended-mitigation)
 
 
 ## Account Validations
@@ -455,6 +460,8 @@ pub token_account: Account<'info, TokenAccount>,
 ```
 Impact: Without validating token account ownership, tokens could be stolen or manipulated by unauthorized users.
 
+
+
 ### Remaining Accounts
 - Missing validation on accounts in the `remaining_accounts` field
 ```rust
@@ -602,6 +609,37 @@ Impact: When a program expects to create an account but doesn't handle pre-exist
 
 Reference : https://code4rena.com/reports/2025-01-pump-science#h-01-the-lock_pool-operation-can-be-dos
 
+
+### Account Existence Check
+- Using lamports to check if a  account exists
+```rust
+// ❌ Bad: Checking token account existence with lamports
+if token_account.lamports() > 0 {
+    // Token account exists
+    // Proceed with operations
+}
+
+// ❌ Bad: Using rent-exemption as existence check
+let rent = Rent::get()?;
+if token_account.lamports() >= rent.minimum_balance(TokenAccount::LEN) {
+    // Token account exists
+    // Proceed with operations
+}
+
+// ✅ Good: Properly validate token account existence and data
+// Check if the account exists and contains valid token data
+if !token_account.data_is_empty() && token_account.owner == &spl_token::ID {
+    let token_data = TokenAccount::try_deserialize(&mut &token_account.data.borrow()[..])?;
+    // Now we can safely use the token data
+}
+
+// ✅ Good: Use Anchor's Account type which validates existence and ownership
+#[account(
+    constraint = token_account.mint == expected_mint @ ErrorCode::InvalidMint,
+)]
+pub token_account: Account<'info, TokenAccount>,
+```
+Impact: Relying on lamports to verify  account existence is vulnerable to donation attacks, where an attacker can transfer lamports to an uninitialized account to make it appear valid. This can lead to operations on invalid accounts, which may cause unexpected behavior, data corruption, or theft of tokens.
 ### Mint Issues
 
 - Missing check for mint close authority extension
@@ -841,3 +879,64 @@ Impact: Improper handling of decimal calculations can lead to rounding errors an
 - [Token-2022 Security Best Practices Part 2](https://blog.offside.io/p/token-2022-security-best-practices-part-2)
 - [Solana Program Security Research](https://research.kudelskisecurity.com/2021/09/15/solana-program-security-part1/)
 - [Solana Smart Contract Security Best Practices](https://github.com/slowmist/solana-smart-contract-security-best-practices)
+
+## Seed Collisions
+
+### The Vulnerability
+Seed collisions occur when two different sets of seed values generate the same Program Derived Address (PDA). This vulnerability can lead to account confusion, where one account is mistaken for another, potentially resulting in denial of service attacks or complete compromise of program functionality.
+
+### Example Scenario
+```rust
+// ❌ Bad - Using simple seeds that might collide
+#[account(
+    init,
+    payer = user,
+    space = 8 + size,
+    seeds = [b"vote", session_id.as_bytes()],
+    bump
+)]
+pub vote_account: Account<'info, VoteAccount>,
+
+// Another part of the program that could generate the same PDA
+#[account(
+    init,
+    payer = organizer,
+    space = 8 + size,
+    seeds = [b"vote", different_id.as_bytes()],
+    bump
+)]
+pub session_account: Account<'info, SessionAccount>,
+```
+
+### Recommended Mitigation
+```rust
+// ✅ Good - Using unique prefixes and additional context in seeds
+#[account(
+    init,
+    payer = user,
+    space = 8 + size,
+    seeds = [b"vote_session", organizer.key().as_ref(), session_id.as_bytes()],
+    bump
+)]
+pub vote_account: Account<'info, VoteAccount>,
+
+// Different purpose uses different prefix
+#[account(
+    init,
+    payer = voter,
+    space = 8 + size,
+    seeds = [b"user_vote", session_id.as_bytes(), voter.key().as_ref()],
+    bump
+)]
+pub user_vote: Account<'info, UserVote>,
+```
+
+To mitigate seed collision vulnerabilities:
+
+1. Use unique prefixes for seeds across different PDAs in the same program
+2. Include additional contextual data in seeds (e.g., user public keys, timestamps)
+3. When using user-supplied data as seeds, validate its uniqueness or add program-controlled components
+4. Consider using a nonce value as part of the seed to ensure uniqueness
+5. Test your program with various seed inputs to verify no collisions occur in expected usage patterns
+
+Impact: Seed collisions can lead to account confusion, where a PDA created for one purpose is mistakenly used for another. This can result in security vulnerabilities including denial of service, account takeovers, or data corruption.
