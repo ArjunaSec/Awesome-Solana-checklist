@@ -1,6 +1,6 @@
 # Awesome Solana Security Checklist
 
-A curated collection of resources and best practices for Solana program security by Arjuna Security. 
+A curated collection of resources and best practices for Solana program security by Arjuna Audits. 
 
 ## Resources
 
