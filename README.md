@@ -1,6 +1,6 @@
 # Awesome Solana Security Checklist
 
-A curated collection of resources and best practices for Solana program security by [Arjuna](x.com/arjuna_sec). 
+A curated collection of resources and best practices for Solana program security by [Arjuna](https://x.com/arjuna_sec). 
 
 For audits reach out at : [here](https://t.me/calc1f4r)
 
