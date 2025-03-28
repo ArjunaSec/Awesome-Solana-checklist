@@ -20,6 +20,7 @@ For audits reach out at : [here](https://t.me/calc1f4r)
   - [Token Account Existence Check](#token-account-existence-check)
   - [Remaining Accounts](#remaining-accounts)
 - [Account Reloading](#account-reloading)
+- [Closing Accounts](#closing-accounts)
 - [DOS vectors](#dos-vectors)
   - [Associated Token Account Initialization](#associated-token-account-initialization)
   - [Account Pre-creation Attack](#account-pre-creation-attack)
@@ -576,6 +577,118 @@ fn process_token_transfer(ctx: Context<TransferTokens>) -> Result<()> {
 ```
 Impact: Solana loads accounts only once at the beginning of a transaction. When an account's state changes through a CPI call, the program's view of that account becomes outdated. Using outdated account state can lead to incorrect calculations, logic errors, and potential security vulnerabilities.
 
+## Closing Accounts
+- Missing validation during account closure
+```rust
+// ❌ Bad: Closing an account without proper validation
+fn close_account(ctx: Context<CloseAccount>) -> Result<()> {
+    // Close the account and transfer funds without validation
+    let destination = &mut ctx.accounts.destination;
+    let account_to_close = &mut ctx.accounts.account_to_close;
+    
+    // Transfer the lamports
+    let dest_starting_lamports = destination.lamports();
+    **destination.lamports.borrow_mut() = dest_starting_lamports
+        .checked_add(account_to_close.lamports())
+        .unwrap();
+    **account_to_close.lamports.borrow_mut() = 0;
+    
+    // Clear the data
+    let mut data = account_to_close.try_borrow_mut_data()?;
+    for byte in data.iter_mut() {
+        *byte = 0;
+    }
+    
+    Ok(())
+}
+
+// ✅ Good: Properly validate before closing an account
+fn close_account(ctx: Context<CloseAccount>) -> Result<()> {
+    
+    Ok(())
+}
+
+// ✅ Good - Anchor approach
+#[derive(Accounts)]
+pub struct CloseAccount<'info> {
+    #[account(mut)]
+    pub destination: AccountInfo<'info>,
+    
+    #[account(
+        mut,
+        constraint = account_to_close.owner == program_id @ ErrorCode::InvalidAccountOwner,
+        constraint = account_data.authority == authority.key() @ ErrorCode::InvalidAuthority,
+        close = destination
+    )]
+    pub account_to_close: Account<'info, AccountData>,
+    
+    pub authority: Signer<'info>,
+}
+```
+
+Impact: Improperly closing accounts without validation can lead to unauthorized account closures, fund theft, or loss of critical program data. Additionally, if the data isn't properly cleared, it could potentially be reused in ways that compromise the system's security model.
+
+- Not checking receiver of lamports during account closure
+```rust
+// ❌ Bad: Not validating the destination account for lamports
+fn close_account(ctx: Context<CloseAccount>) -> Result<()> {
+    // Anyone's account could be passed as destination
+    let destination = &mut ctx.accounts.destination;
+    let account_to_close = &mut ctx.accounts.account_to_close;
+    
+    // Transfer lamports to potentially malicious destination
+    let dest_starting_lamports = destination.lamports();
+    **destination.lamports.borrow_mut() = dest_starting_lamports
+        .checked_add(account_to_close.lamports())
+        .unwrap();
+    **account_to_close.lamports.borrow_mut() = 0;
+    
+    // Clear the data
+    let mut data = account_to_close.try_borrow_mut_data()?;
+    for byte in data.iter_mut() {
+        *byte = 0;
+    }
+    
+    Ok(())
+}
+
+// ✅ Good: Validate the destination account
+fn close_account(ctx: Context<CloseAccount>) -> Result<()> {
+    // Ensure destination is the authority or another approved address
+    require!(
+        ctx.accounts.destination.key() == ctx.accounts.authority.key() ||
+        ctx.accounts.destination.key() == approved_treasury_address,
+        ErrorCode::InvalidDestination
+    );
+    
+    // Rest of closing logic
+    // ...
+}
+
+// ✅ Good - Anchor with destination validation
+#[derive(Accounts)]
+pub struct CloseAccount<'info> {
+    #[account(
+        mut,
+        constraint = destination.key() == authority.key() @ ErrorCode::InvalidDestination
+    )]
+    pub destination: AccountInfo<'info>,
+    
+    #[account(
+        mut,
+        close = destination
+    )]
+    pub account_to_close: Account<'info, AccountData>,
+    
+    pub authority: Signer<'info>,
+}
+```
+Impact: Without validating the destination account, funds from closed accounts could be redirected to attacker-controlled addresses, resulting in theft of funds that should be returned to legitimate users.
+
+References:
+- [A Hitchhiker's Guide to Solana Program Security - Closing Accounts](https://www.helius.dev/blog/a-hitchhikers-guide-to-solana-program-security#closing-accounts)
+- [Solana Program Security Course - Closing Accounts](https://solana.com/developers/courses/program-security/closing-accounts)
+
 ## DOS vectors 
 
 ### Associated Token Account Initialization
@@ -812,6 +925,9 @@ let balance = account.balance + amount;
 let balance = account.balance.checked_add(amount)
     .ok_or(ProgramError::Overflow)?;
 ```
+
+> **Note**: Always verify your `Cargo.toml` has `overflow-checks = true` in the `[profile.release]` section as an additional safeguard. This enables runtime integer overflow checks even in release builds.
+
 Impact: Unchecked arithmetic operations can lead to integer overflow or underflow, resulting in incorrect calculations and potential loss of funds.
 
 ### Division Safety
