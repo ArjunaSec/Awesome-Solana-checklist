@@ -276,8 +276,6 @@ other_program::cpi::some_instruction(
 ```
 Impact: Incorrect account ordering in CPI calls can lead to unexpected behavior, mainly tx failures.
 
-Reference: https://neodyme.io/en/blog/solana_common_pitfalls/#arbitrary-signed-program-invocation
-
 - Missing bump value in signer seeds
 ```rust
 // ❌ Bad - Missing bump value in signer seeds
