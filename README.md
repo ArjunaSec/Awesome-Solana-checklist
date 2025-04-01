@@ -75,6 +75,8 @@ pub account: Account<AccountType>,
 ```
 Impact: Without signer validation, any account can be used in place of the intended signer, potentially allowing unauthorized access to program functions.
 
+Reference: https://neodyme.io/en/blog/solana_common_pitfalls/#missing-signer-check
+
 ### Writer Checks
 - Missing writer check
 ```rust
@@ -120,6 +122,8 @@ pub token_2022_program: Program<'info, Token2022>, // system owned accounts will
 
 ```
 Impact: Without owner validation, malicious accounts owned by other programs could be used, potentially leading to unauthorized state modifications or data theft.
+
+Reference: https://neodyme.io/en/blog/solana_common_pitfalls/#missing-ownership-check
 
 ### PDA Validation
 - Missing PDA validation
@@ -234,7 +238,7 @@ recipient.try_borrow_mut_lamports()? += amount;
 ```
 Impact: Using signer seeds for transfers from a pda won't succeed, as only system program can only deduct balances.
 
-Reference : https://solanacookbook.com/references/programs.html#how-to-transfer-sol-in-a-program
+Reference: https://solanacookbook.com/references/programs.html#how-to-transfer-sol-in-a-program
 
 ## CPI Issues 
 
@@ -271,6 +275,8 @@ other_program::cpi::some_instruction(
 
 ```
 Impact: Incorrect account ordering in CPI calls can lead to unexpected behavior, mainly tx failures.
+
+Reference: https://neodyme.io/en/blog/solana_common_pitfalls/#arbitrary-signed-program-invocation
 
 - Missing bump value in signer seeds
 ```rust
@@ -903,6 +909,8 @@ let balance = account.balance.checked_add(amount)
 > **Note**: Always verify your `Cargo.toml` has `overflow-checks = true` in the `[profile.release]` section as an additional safeguard. This enables runtime integer overflow checks even in release builds.
 
 Impact: Unchecked arithmetic operations can lead to integer overflow or underflow, resulting in incorrect calculations and potential loss of funds.
+
+Reference: https://neodyme.io/en/blog/solana_common_pitfalls/#integer-overflow--underflow
 
 ### Division Safety
 - Missing checks for zero divisors
